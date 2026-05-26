@@ -212,6 +212,11 @@ const GameEngine = {
         return (this.state.troop || []).reduce((total, c) => total + this._getMaintCostForChar(c), 0);
     },
 
+    // Retorna custo diário total da frota atual
+    getDailyVehicleMaintenance: function() {
+        return (this.state.fleet || []).reduce((total, v) => total + (v.dailyCost || 0), 0);
+    },
+
     // Contrata um novo militar (adiciona à tropa)
     hireCharacter: function(charId) {
         const char = GameData.characters.find(c => c.id === charId);
@@ -325,7 +330,18 @@ const GameEngine = {
             totalVehFailChance += v.baseFailChance;
         });
 
-        let successChance = 0.6 - (occ.baseDifficulty * 0.05) + totalSuccessMod - (totalVehFailChance * 0.5) + synergySuccessBonus;
+        // Bônus por tipo de viatura × tipo da ocorrência
+        let typeBonusTotal = 0;
+        let typeBonusNotes = [];
+        vehs.forEach(v => {
+            const tb = GameData.vehicleTypeBonuses[v.type];
+            if (tb && occ.tags && tb.tags.some(t => occ.tags.includes(t))) {
+                typeBonusTotal += tb.successBonus;
+                typeBonusNotes.push(tb.desc);
+            }
+        });
+
+        let successChance = 0.6 - (occ.baseDifficulty * 0.05) + totalSuccessMod - (totalVehFailChance * 0.5) + synergySuccessBonus + typeBonusTotal;
         const diffData = GameData.difficulties[this.state.difficulty || 'normal'];
         if (diffData) successChance += diffData.successBonus;
         successChance = Math.max(0.05, Math.min(0.95, successChance));
@@ -350,12 +366,18 @@ const GameEngine = {
         // Atualizar progresso da meta semanal
         this._updateWeeklyProgress(occ, resultType);
 
-        // Aplicar desgaste a todas as viaturas (3 a 10)
+        // Aplicar desgaste + consumo de combustível a todas as viaturas
         let wearText = '';
         vehs.forEach(v => {
             const damage = Math.floor(Math.random() * 8) + 3;
             v.condition = Math.max(0, v.condition - damage);
-            wearText += `\n[VIATURA] ${v.name} sofreu -${damage}% de condição (Restante: ${v.condition}%)`;
+            const consumption = GameData.fuelConsumptionPerMission[v.type] || 10;
+            let vLine = `\n[VIATURA] ${v.name} — Condição: -${damage}% (${v.condition}%)`;
+            if (consumption > 0) {
+                v.fuel = Math.max(0, (v.fuel || 100) - consumption);
+                vLine += ` | Combustível: ${v.fuel}%`;
+            }
+            wearText += vLine;
         });
 
         // Nomes formatados dos militares
@@ -409,7 +431,8 @@ const GameEngine = {
         }
 
         const synergyNote = synergyNotes.length > 0 ? `\n` + synergyNotes.join('\n') : '';
-        const fullLog = `OCORRÊNCIA: ${occ.title}\n${text}${fatigueMsg}${synergyNote}${consequences}`;
+        const typeNote = typeBonusNotes.length > 0 ? `\n` + typeBonusNotes.join('\n') : '';
+        const fullLog = `OCORRÊNCIA: ${occ.title}\n${text}${fatigueMsg}${synergyNote}${typeNote}${consequences}`;
         this.addLog(fullLog, resultType === 'fail' ? 'alert' : 'normal');
 
         // Remover ocorrência do array ativo
@@ -438,6 +461,39 @@ const GameEngine = {
             this.state.activeOccurrences = [];
             this.saveGame();
         }
+    },
+
+    // Abastece uma viatura — R$1 por % de combustível
+    refuelVehicle: function(vehicleId) {
+        const veh = this.state.fleet.find(v => v.id === vehicleId);
+        if (!veh) return { success: false, text: 'Viatura não encontrada.' };
+        if (veh.type === 'Reboque') return { success: false, text: 'Reboques não têm motor. Não precisam de combustível.' };
+        const needed = 100 - (veh.fuel || 0);
+        if (needed <= 0) return { success: false, text: `${veh.name} já está com o tanque cheio.` };
+        const cost = needed; // R$1 por %
+        if (this.state.money < cost) return { success: false, text: `Sem fundos! Abastecer ${veh.name} custa R$${cost}.` };
+        this.state.money -= cost;
+        veh.fuel = 100;
+        this.addLog(`[ABASTECIMENTO] ${veh.name}: +${needed}% combustível. R$-${cost}`, 'normal');
+        this.saveGame();
+        return { success: true, cost, needed, vehName: veh.name };
+    },
+
+    // Melhoria permanente na viatura — reduz baseFailChance em 30%
+    upgradeVehicle: function(vehicleId) {
+        const veh = this.state.fleet.find(v => v.id === vehicleId);
+        if (!veh) return { success: false, text: 'Viatura não encontrada.' };
+        if (veh.upgraded) return { success: false, text: `${veh.name} já recebeu melhoria anteriormente.` };
+        if ((veh.condition || 0) < 50) return { success: false, text: `${veh.name} precisa estar com pelo menos 50% de condição para ser melhorada.` };
+        const cost = 600;
+        if (this.state.money < cost) return { success: false, text: `Sem fundos! A melhoria custa R$${cost}.` };
+        this.state.money -= cost;
+        const oldChance = veh.baseFailChance;
+        veh.baseFailChance = Math.max(0.02, parseFloat((veh.baseFailChance * 0.70).toFixed(3)));
+        veh.upgraded = true;
+        this.addLog(`[MELHORIA] ${veh.name}: falha base ${(oldChance*100).toFixed(0)}% → ${(veh.baseFailChance*100).toFixed(0)}%. R$-${cost}`, 'normal');
+        this.saveGame();
+        return { success: true, cost, vehName: veh.name, oldChance, newChance: veh.baseFailChance };
     },
 
     // Oficina do Zé: conserta uma viatura com resultado aleatório

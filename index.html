@@ -121,8 +121,8 @@
                 </div>
                 <div class="screen-body">
                     <div id="workshop-info" class="scrollable-box" style="margin-bottom:0; flex: 0 0 auto; height: auto;"></div>
-                    <select id="sel-veh-workshop" class="btn" style="width:100%; background: var(--bg-color); color: var(--text-color); margin: 0; flex-shrink: 0;"></select>
-                    <button class="btn" style="margin: 0; flex-shrink: 0;" onclick="GameMain.doRepair()">[ MANDAR CONSERTAR — R$ 300 ]</button>
+                    <select id="sel-veh-workshop" class="btn" style="width:100%; background: var(--bg-color); color: var(--text-color); margin: 0; flex-shrink: 0;" onchange="GameMain._updateWorkshopActions()"></select>
+                    <div id="workshop-actions" style="display:flex; flex-direction:column; gap:6px; flex-shrink:0;"></div>
                     <div id="workshop-result" style="margin-top:5px; flex-shrink: 0;"></div>
                 </div>
             </section>

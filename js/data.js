@@ -98,16 +98,32 @@ const GameData = {
         { id: 'c23', name: 'BC Leandro',      profile: 'Calmo',           desc: 'Mesmo nas piores ocorrências, parece que está numa tarde de domingo.', frase: 'Tranquilo.' },
     ],
 
+    // dailyCost: custo fixo diário de manutenção da viatura
+    // fuel: 0-100% de combustível (Reboque não tem motor, permanece 0)
     vehicles: [
-        { id: 'v1', name: 'ABTF-01', desc: 'Vaza água. Mas apaga fogo.', condition: 100, fuel: 100, baseFailChance: 0.1, type: 'Caminhão' },
-        { id: 'v2', name: 'USA-01', desc: 'A ambulância que mais quebra na BR.', condition: 100, fuel: 100, baseFailChance: 0.15, type: 'Resgate' },
-        { id: 'v3', name: 'ADM-01', desc: 'Ar condicionado gelando.', condition: 100, fuel: 100, baseFailChance: 0.05, type: 'Administrativo' },
-        { id: 'v4', name: 'Caminhonete Operacional', desc: 'Pula mais que cavalo brabo.', condition: 100, fuel: 100, baseFailChance: 0.1, type: 'Apoio' },
-        { id: 'v5', name: 'Moto do Militar', desc: 'Chega rápido, se não furar o pneu.', condition: 100, fuel: 100, baseFailChance: 0.2, type: 'Apoio' },
-        { id: 'v6', name: 'Caminhão Velho da Prefeitura', desc: 'Ele ainda funciona. Supostamente.', condition: 50, fuel: 100, baseFailChance: 0.4, type: 'Caminhão' },
-        { id: 'v7', name: 'Lancha de Resgate', desc: 'Fica parada 90% do tempo. Quando a água chama, ela responde.', condition: 100, fuel: 100, baseFailChance: 0.1, type: 'Aquático', restrictToTags: ['aquático'] },
-        { id: 'v8', name: 'Carretinha de Equipamentos', desc: 'Um dia a roda vai soltar.', condition: 80, fuel: 0, baseFailChance: 0.3, type: 'Reboque' }
+        { id: 'v1', name: 'ABTF-01',                    desc: 'Vaza água. Mas apaga fogo.',                              condition: 100, fuel: 100, baseFailChance: 0.10, type: 'Caminhão',      dailyCost: 12 },
+        { id: 'v2', name: 'USA-01',                      desc: 'A ambulância que mais quebra na BR.',                     condition: 100, fuel: 100, baseFailChance: 0.15, type: 'Resgate',       dailyCost: 10 },
+        { id: 'v3', name: 'ADM-01',                      desc: 'Ar condicionado gelando.',                                condition: 100, fuel: 100, baseFailChance: 0.05, type: 'Administrativo',dailyCost:  8 },
+        { id: 'v4', name: 'Caminhonete Operacional',     desc: 'Pula mais que cavalo brabo.',                            condition: 100, fuel: 100, baseFailChance: 0.10, type: 'Apoio',         dailyCost: 10 },
+        { id: 'v5', name: 'Moto do Militar',             desc: 'Chega rápido, se não furar o pneu.',                     condition: 100, fuel: 100, baseFailChance: 0.20, type: 'Apoio',         dailyCost:  8 },
+        { id: 'v6', name: 'Caminhão Velho da Prefeitura',desc: 'Ele ainda funciona. Supostamente.',                      condition:  50, fuel: 100, baseFailChance: 0.40, type: 'Caminhão',      dailyCost:  8 },
+        { id: 'v7', name: 'Lancha de Resgate',           desc: 'Fica parada 90% do tempo. Quando a água chama, responde.',condition: 100, fuel: 100, baseFailChance: 0.10, type: 'Aquático',     dailyCost: 10, restrictToTags: ['aquático'] },
+        { id: 'v8', name: 'Carretinha de Equipamentos',  desc: 'Um dia a roda vai soltar.',                              condition:  80, fuel:   0, baseFailChance: 0.30, type: 'Reboque',       dailyCost:  5 },
     ],
+
+    // Consumo de combustível por missão (%) — Reboque não tem motor
+    fuelConsumptionPerMission: {
+        'Caminhão': 15, 'Resgate': 10, 'Administrativo': 8,
+        'Apoio': 10, 'Aquático': 15, 'Reboque': 0
+    },
+
+    // Bônus automático de sucesso quando o tipo da viatura combina com a ocorrência
+    vehicleTypeBonuses: {
+        'Caminhão':  { tags: ['fogo'],               successBonus: 0.15, desc: '🚒 Caminhão em incêndio: +15% sucesso' },
+        'Resgate':   { tags: ['resgate', 'aquático'], successBonus: 0.15, desc: '🚑 Resgate na missão certa: +15% sucesso' },
+        'Aquático':  { tags: ['aquático'],            successBonus: 0.20, desc: '⛵ Viatura aquática na água: +20% sucesso' },
+        'Apoio':     { tags: ['rural', 'animal'],     successBonus: 0.10, desc: '🚗 Apoio em ocorrência rural/animal: +10% sucesso' },
+    },
 
     locations: [
         'Centro', 'Trizidela', 'Altamira', 'Tamarindo', 'Vila Alvorada', 'BR-226', 'Rio Corda', 'Zona Rural'
@@ -228,9 +244,9 @@ const GameData = {
     },
 
     difficulties: {
-        facil:   { label: 'FÁCIL',   successBonus:  0.10, startMoney: 1500, penaltyMult: 0.7  },
-        normal:  { label: 'NORMAL',  successBonus:  0.00, startMoney: 1000, penaltyMult: 1.0  },
-        dificil: { label: 'DIFÍCIL', successBonus: -0.10, startMoney:  700, penaltyMult: 1.3  },
+        facil:   { label: 'FÁCIL',   successBonus:  0.10, startMoney: 2000, penaltyMult: 0.7  },
+        normal:  { label: 'NORMAL',  successBonus:  0.00, startMoney: 1300, penaltyMult: 1.0  },
+        dificil: { label: 'DIFÍCIL', successBonus: -0.10, startMoney:  900, penaltyMult: 1.3  },
     },
 
     weeklyGoals: [

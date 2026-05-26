@@ -84,7 +84,9 @@ const GameMain = {
             let html = '';
             GameEngine.state.fleet.forEach(v => {
                 if (v.condition <= 0) html += `<div class="alert">⛔ ${v.name} SUCATEADA — leve à oficina!</div>`;
-                else if (v.condition <= 30) html += `<div class="alert">⚠️ ${v.name} em condição crítica (${v.condition}%)</div>`;
+                else if (v.condition <= 30) html += `<div class="alert">⚠️ ${v.name} condição crítica (${v.condition}%)</div>`;
+                const fuel = v.fuel !== undefined ? v.fuel : 100;
+                if (v.type !== 'Reboque' && fuel <= 20) html += `<div class="alert">🪫 ${v.name} combustível baixo (${fuel}%)</div>`;
             });
             alertEl.innerHTML = html;
         }
@@ -152,8 +154,9 @@ const GameMain = {
 
         GameEngine.state.day++;
         const maintCost = GameEngine.getDailyMaintenance();
-        GameEngine.state.money -= maintCost;
-        GameEngine.addLog(`Dia finalizado. Manutenção da tropa (${GameEngine.state.troop.length} militares): R$ ${maintCost},00`);
+        const vehMaint  = GameEngine.getDailyVehicleMaintenance();
+        GameEngine.state.money -= (maintCost + vehMaint);
+        GameEngine.addLog(`Dia finalizado. Tropa: R$${maintCost} | Frota: R$${vehMaint} | Total: R$${maintCost + vehMaint}`);
 
         // Recuperação de energia diária
         GameEngine.recoverEnergy();
@@ -178,7 +181,7 @@ const GameMain = {
         const weeklyResult = GameEngine.evaluateWeeklyGoal();
 
         const preview = document.getElementById('log-preview');
-        preview.innerHTML += `<div>> DIA ${GameEngine.state.day} INICIADO. | Manutenção da tropa: R$ ${maintCost}</div>`;
+        preview.innerHTML += `<div>> DIA ${GameEngine.state.day} INICIADO. | Tropa: R$${maintCost} | Frota: R$${vehMaint}</div>`;
         
         if (expiredCount > 0) {
             preview.innerHTML += `<div class="alert">[NEGLIGÊNCIA] ${expiredCount} chamados expiraram! Perda de reputação.</div>`;
@@ -397,20 +400,35 @@ const GameMain = {
             select.onchange = () => this._updateSynergyHint();
 
             GameEngine.state.fleet.forEach(v => {
-                const isRestricted = v.restrictToTags && v.restrictToTags.length > 0
-                    && !v.restrictToTags.some(t => occTags.includes(t));
-                const optLabel = isRestricted
-                    ? `${v.name} — ${v.condition}% ⛔ Apenas em ocorrências aquáticas`
-                    : `${v.name} — ${v.condition}%`;
+                const fuel = v.fuel !== undefined ? v.fuel : 100;
+                const isSucateada   = v.condition <= 0;
+                const isSemCombust  = v.type !== 'Reboque' && fuel <= 0;
+                const isTagRestrict = v.restrictToTags && v.restrictToTags.length > 0
+                                      && !v.restrictToTags.some(t => occTags.includes(t));
+                const isDisabled = isSucateada || isSemCombust || isTagRestrict;
+
+                // Ícone de condição
+                const condIcon = isSucateada ? '⛔' : v.condition <= 20 ? '🔴' : v.condition <= 60 ? '⚠️' : '✅';
+                // Ícone de combustível (apenas para viaturas motorizadas)
+                const fuelText = v.type !== 'Reboque'
+                    ? (isSemCombust ? ' 🪫 SEM COMB.' : fuel <= 20 ? ` ⛽${fuel}%` : ` ⛽${fuel}%`)
+                    : '';
+                const upgradeText = v.upgraded ? ' ⬆' : '';
+                // Motivo do bloqueio
+                const blockReason = isSucateada ? ' — SUCATEADA'
+                    : isSemCombust ? ' — SEM COMBUSTÍVEL'
+                    : isTagRestrict ? ' — Apenas ocorrências aquáticas'
+                    : '';
+
                 const opt = document.createElement('option');
                 opt.value = v.id;
-                opt.text = optLabel;
-                opt.disabled = isRestricted;
-                if (isRestricted) opt.style.color = '#555';
+                opt.text = `${condIcon} ${v.name} — ${v.condition}%${fuelText}${upgradeText}${blockReason}`;
+                opt.disabled = isDisabled;
+                if (isDisabled) opt.style.color = '#555';
                 select.appendChild(opt);
             });
 
-            // Pré-selecionar a i-ésima viatura não restrita
+            // Pré-selecionar a i-ésima viatura disponível
             let picked = 0;
             for (let j = 0; j < select.options.length; j++) {
                 if (!select.options[j].disabled) {
@@ -479,11 +497,24 @@ const GameMain = {
             }
         });
 
+        // Bônus por tipo de viatura
+        const occ = (GameEngine.state.activeOccurrences || []).find(o => o.id === this._selectedOccId);
+        const occTagsHint = occ ? (occ.tags || []) : [];
+        vehIds.forEach(vId => {
+            const v = GameEngine.state.fleet.find(veh => veh.id === vId);
+            if (v) {
+                const tb = GameData.vehicleTypeBonuses[v.type];
+                if (tb && tb.tags.some(t => occTagsHint.includes(t))) {
+                    synergyTexts.push(tb.desc);
+                }
+            }
+        });
+
         if (synergyTexts.length > 0) {
             hint.innerText = synergyTexts.join('\n');
             hint.style.color = '#00ff88';
         } else {
-            hint.innerText = 'Nenhuma sinergia ativa de combate no momento.';
+            hint.innerText = 'Nenhum bônus de combinação ativo no momento.';
             hint.style.color = '#888';
         }
     },
@@ -517,14 +548,23 @@ const GameMain = {
             return;
         }
 
-        // Validar restrições de viatura por tipo de ocorrência
+        // Validar condição, combustível e restrições de tag
         const occForDispatch = (GameEngine.state.activeOccurrences || []).find(o => o.id === this._selectedOccId);
         const occTagsForDispatch = occForDispatch ? (occForDispatch.tags || []) : [];
         for (const vId of vehIds) {
             const v = GameEngine.state.fleet.find(v => v.id === vId);
-            if (v && v.restrictToTags && v.restrictToTags.length > 0) {
-                const match = v.restrictToTags.some(t => occTagsForDispatch.includes(t));
-                if (!match) {
+            if (!v) continue;
+            if (v.condition <= 0) {
+                alert(`⛔ "${v.name}" está SUCATEADA e não pode ser despachada. Leve à oficina primeiro.`);
+                return;
+            }
+            const fuel = v.fuel !== undefined ? v.fuel : 100;
+            if (v.type !== 'Reboque' && fuel <= 0) {
+                alert(`🪫 "${v.name}" está sem combustível. Abasteça na Oficina do Zé.`);
+                return;
+            }
+            if (v.restrictToTags && v.restrictToTags.length > 0) {
+                if (!v.restrictToTags.some(t => occTagsForDispatch.includes(t))) {
                     alert(`⛔ "${v.name}" só pode ser usada em ocorrências aquáticas.\nSelecione outra viatura.`);
                     return;
                 }
@@ -845,48 +885,102 @@ const GameMain = {
 
     // ─── OFICINA DO ZÉ ────────────────────────────────────────
     openWorkshop: function() {
-        const workshopInfo = document.getElementById('workshop-info');
-        const selVehWorkshop = document.getElementById('sel-veh-workshop');
-
-        selVehWorkshop.innerHTML = "";
-        GameEngine.state.fleet.forEach(v => {
-            selVehWorkshop.innerHTML += `<option value="${v.id}">${v.name} — ${v.condition}%</option>`;
-        });
-
-        workshopInfo.innerHTML = `
+        document.getElementById('workshop-info').innerHTML = `
             <p>🔧 A <strong>Oficina do Zé</strong> atende 24h. Os resultados... variam.</p>
-            <p style="color:#f0a500;">Custo fixo: R$ 300 por viatura. O Zé não aceita parcelamento.</p>
+            <p style="color:#f0a500; font-size:1rem;">Consertar: R$300 | Abastecer: R$1/% | Melhorar: R$600 (permanente, uma vez)</p>
         `;
-
         document.getElementById('workshop-result').innerHTML = '';
+        this._refreshWorkshopSelect();
         GameUI.showScreen('screen-workshop');
+    },
+
+    _refreshWorkshopSelect: function() {
+        const sel = document.getElementById('sel-veh-workshop');
+        const prevId = sel.value;
+        sel.innerHTML = '';
+        GameEngine.state.fleet.forEach(v => {
+            const condIcon = v.condition <= 0 ? '⛔' : v.condition <= 20 ? '🔴' : v.condition <= 60 ? '⚠️' : '✅';
+            const fuel = v.fuel !== undefined ? v.fuel : 100;
+            const fuelText = v.type !== 'Reboque' ? ` ⛽${fuel}%` : '';
+            const upgradeText = v.upgraded ? ' ⬆' : '';
+            sel.innerHTML += `<option value="${v.id}">${condIcon} ${v.name} — ${v.condition}%${fuelText}${upgradeText}</option>`;
+        });
+        // Manter a viatura selecionada anteriormente se possível
+        if (prevId) {
+            const match = Array.from(sel.options).find(o => o.value === prevId);
+            if (match) sel.value = prevId;
+        }
+        this._updateWorkshopActions();
+    },
+
+    _updateWorkshopActions: function() {
+        const actions = document.getElementById('workshop-actions');
+        const vehId   = document.getElementById('sel-veh-workshop').value;
+        const veh     = GameEngine.state.fleet.find(v => v.id === vehId);
+        if (!veh || !actions) return;
+
+        const money      = GameEngine.state.money;
+        const fuel       = veh.fuel !== undefined ? veh.fuel : 100;
+        const fuelNeeded = 100 - fuel;
+        const refuelCost = fuelNeeded; // R$1 por %
+
+        const canRepair  = money >= 300;
+        const canRefuel  = veh.type !== 'Reboque' && fuelNeeded > 0 && money >= refuelCost;
+        const fullTank   = veh.type === 'Reboque' || fuelNeeded === 0;
+        const canUpgrade = !veh.upgraded && veh.condition >= 50 && money >= 600;
+
+        const btn = (label, ok, fn, tip='') =>
+            `<button class="btn" style="margin:0; flex-shrink:0; ${ok ? '' : 'color:#555; border-color:#555;'}" ${ok ? '' : 'disabled'} title="${tip}" onclick="${fn}">${label}</button>`;
+
+        const refuelLabel = fullTank
+            ? '[ ⛽ ABASTECER — TANQUE CHEIO ]'
+            : `[ ⛽ ABASTECER +${fuelNeeded}% — R$${refuelCost} ]`;
+        const upgradeLabel = veh.upgraded
+            ? '[ ⬆ MELHORAR — JÁ REALIZADA ]'
+            : `[ ⬆ MELHORAR VIATURA — R$600 ]`;
+        const upgradeTip = veh.upgraded ? 'Melhoria já feita' : veh.condition < 50 ? 'Precisa 50%+ condição' : '';
+
+        actions.innerHTML =
+            btn('[ 🔧 CONSERTAR — R$300 ]', canRepair, 'GameMain.doRepair()') +
+            btn(refuelLabel,                 canRefuel && !fullTank, 'GameMain.doRefuel()') +
+            btn(upgradeLabel,                canUpgrade, 'GameMain.doUpgrade()', upgradeTip);
     },
 
     doRepair: function() {
         const vehId = document.getElementById('sel-veh-workshop').value;
         const result = GameEngine.repairVehicle(vehId);
-        const workshopInfo = document.getElementById('workshop-info');
         const resultDiv = document.getElementById('workshop-result');
-
-        if (!result.success) {
-            resultDiv.innerHTML = `<p class="alert">${result.text}</p>`;
-            return;
-        }
-
+        if (!result.success) { resultDiv.innerHTML = `<p class="alert">${result.text}</p>`; return; }
         const color = result.outcome.type === 'fail' ? 'var(--alert-color)' : result.outcome.type === 'chaos' ? '#f0a500' : '#00ff88';
         resultDiv.innerHTML = `
             <p style="color:${color};">${result.outcome.text}</p>
-            <p>${result.vehName}: ${result.before}% → <strong>${result.after}%</strong> | Pago: R$ ${result.cost}</p>
+            <p>${result.vehName}: ${result.before}% → <strong>${result.after}%</strong> | R$-${result.cost}</p>
         `;
-
         GameUI.updateHeader();
+        this._refreshWorkshopSelect();
+    },
 
-        // Atualiza select com nova condição
-        const selVehWorkshop = document.getElementById('sel-veh-workshop');
-        selVehWorkshop.innerHTML = "";
-        GameEngine.state.fleet.forEach(v => {
-            selVehWorkshop.innerHTML += `<option value="${v.id}">${v.name} — ${v.condition}%</option>`;
-        });
+    doRefuel: function() {
+        const vehId = document.getElementById('sel-veh-workshop').value;
+        const result = GameEngine.refuelVehicle(vehId);
+        const resultDiv = document.getElementById('workshop-result');
+        if (!result.success) { resultDiv.innerHTML = `<p class="alert">${result.text}</p>`; return; }
+        resultDiv.innerHTML = `<p style="color:#00ff88;">⛽ ${result.vehName} abastecida (+${result.needed}%). R$-${result.cost}</p>`;
+        GameUI.updateHeader();
+        this._refreshWorkshopSelect();
+    },
+
+    doUpgrade: function() {
+        const vehId = document.getElementById('sel-veh-workshop').value;
+        const result = GameEngine.upgradeVehicle(vehId);
+        const resultDiv = document.getElementById('workshop-result');
+        if (!result.success) { resultDiv.innerHTML = `<p class="alert">${result.text}</p>`; return; }
+        resultDiv.innerHTML = `
+            <p style="color:#00ff88;">⬆ ${result.vehName} melhorada! Chance de falha: ${(result.oldChance*100).toFixed(0)}% → ${(result.newChance*100).toFixed(0)}%</p>
+            <p>R$-${result.cost} | Melhoria permanente aplicada.</p>
+        `;
+        GameUI.updateHeader();
+        this._refreshWorkshopSelect();
     }
 };
 
