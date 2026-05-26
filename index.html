@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>17° BBM EM CHAMAS</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div id="crt-overlay"></div>
+    <div id="error-log" style="color: red; position: absolute; top: 10px; left: 10px; z-index: 9999; white-space: pre-wrap;"></div>
+    <script>
+        window.onerror = function(msg, url, lineNo, columnNo, error) {
+            document.getElementById('error-log').innerText += 'Error: ' + msg + '\nLine: ' + lineNo + '\n';
+            return false;
+        };
+    </script>
+    <div id="terminal-container">
+        <!-- HEADER DO JOGO -->
+        <header id="game-header" class="hidden">
+            <div class="header-info">DIA: <span id="ui-day">0</span></div>
+            <div class="header-info">REPUTAÇÃO: <span id="ui-rep">0</span></div>
+            <div class="header-info">MORAL: <span id="ui-moral">0</span></div>
+            <div class="header-info">FUNDO: R$ <span id="ui-money">0</span></div>
+            <div class="header-info">NÍVEL: <span id="ui-level">0</span></div>
+        </header>
+
+        <main id="screen-container" style="display: flex; flex-direction: column; flex: 1; min-height: 0; width: 100%;">
+            <!-- TELA: MENU PRINCIPAL -->
+            <section id="screen-menu" class="screen active">
+                <h1 class="glitch" data-text="17° BBM EM CHAMAS">17° BBM EM CHAMAS</h1>
+                <p class="subtitle">Simulador de Gerenciamento de Quartel - Barra do Corda/MA</p>
+                <div class="menu-options">
+                    <button class="btn" onclick="GameMain.startNewCampaign()">[1] NOVA CAMPANHA</button>
+                    <button class="btn" id="btn-continue" onclick="GameMain.continueCampaign()" disabled>[2] CONTINUAR</button>
+                    <button class="btn" onclick="GameMain.showHistory()">[3] HISTÓRICO DO QUARTEL</button>
+                    <button class="btn" onclick="GameMain.openSettings()">[4] CONFIGURAÇÕES</button>
+                    <button class="btn" onclick="window.close()">[5] SAIR</button>
+                </div>
+            </section>
+
+            <!-- TELA: DIFICULDADE -->
+            <section id="screen-difficulty" class="screen">
+                <h2>NOVA CAMPANHA</h2>
+                <p class="subtitle">Nomeie sua campanha e escolha a dificuldade</p>
+                <div style="margin: 0 0 20px 0;">
+                    <label style="font-size:1.2rem;">Nome da Campanha:<br>
+                        <input id="input-campaign-name" type="text" class="btn" placeholder="Ex: Operação Caos Total" style="background:var(--bg-color); color:var(--text-color); width:100%; margin-top:5px;">
+                    </label>
+                </div>
+                <div class="menu-options">
+                    <button class="btn" onclick="GameMain.selectDifficulty('facil')">[1] FÁCIL — Mais dinheiro, missões mais fáceis</button>
+                    <button class="btn" onclick="GameMain.selectDifficulty('normal')">[2] NORMAL — Experiência padrão</button>
+                    <button class="btn" onclick="GameMain.selectDifficulty('dificil')">[3] DIFÍCIL — Orçamento apertado, mais caos</button>
+                    <button class="btn btn-back" onclick="GameMain.returnToMenu()">[4] VOLTAR</button>
+                </div>
+            </section>
+
+            <!-- TELA: INTRODUÇÃO NARRATIVA -->
+            <section id="screen-intro" class="screen">
+                <div id="intro-text" class="typewriter-container"></div>
+                <button class="btn mt-2 hidden" id="btn-intro-next" onclick="GameMain.revealTroop()">[ CONTINUAR ]</button>
+            </section>
+
+            <!-- TELA: APRESENTAÇÃO DA TROPA INICIAL -->
+            <section id="screen-troop-reveal" class="screen">
+                <h2>GUARNIÇÃO INICIAL SORTEADA 🧑‍🚒</h2>
+                <p class="subtitle">Estes são os bravos (ou não) militares à sua disposição.</p>
+                <div id="troop-reveal-content" class="dashboard">
+                    <!-- Preenchido via JS -->
+                </div>
+                <button class="btn mt-2" onclick="GameMain.enterCampaign()">[ ASSUMIR O COMANDO ]</button>
+            </section>
+
+            <!-- TELA: CAMPANHA (MENU DIÁRIO) -->
+            <section id="screen-campaign" class="screen">
+                <h2>PAINEL DE COMANDO</h2>
+                <p id="ui-campaign-name" style="text-align:center; color:#f0a500; font-size:1.1rem; margin-bottom:4px;"></p>
+                <p id="ui-rep-title" class="subtitle" style="margin-bottom: 8px; font-size: 1.2rem;"></p>
+                <div id="fleet-alerts" style="font-size:1.1rem; flex-shrink:0;"></div>
+                <div id="weekly-goal-display" style="border:1px dashed #f0a500; padding:6px 10px; font-size:1.1rem; flex-shrink:0;"></div>
+                <div class="dashboard">
+                    <button class="btn" onclick="GameMain.viewQuarter()">[V] VER QUARTEL</button>
+                    <button class="btn" onclick="GameMain.viewOccurrences()">[O] OCORRÊNCIAS</button>
+                    <button class="btn" onclick="GameMain.openWorkshop()">[W] OFICINA DO ZÉ</button>
+                    <button class="btn" onclick="GameMain.nextDay()">[N] PRÓXIMO DIA</button>
+                </div>
+                <div class="log-preview" id="log-preview">
+                    <!-- Logs rápidos aparecem aqui -->
+                </div>
+            </section>
+            
+            <!-- TELA: QUARTEL -->
+            <section id="screen-quarter" class="screen">
+                <div class="screen-header">
+                    <h2>O QUARTEL 🚒</h2>
+                    <button class="btn btn-back" onclick="GameMain.returnToCampaign()">[ ← VOLTAR ]</button>
+                </div>
+                <div class="screen-body">
+                    <div id="quarter-info" class="scrollable-box" style="margin-bottom:0; flex: 1;">
+                        <!-- Preenchido via JS -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- TELA: OFICINA DO ZÉ -->
+            <section id="screen-workshop" class="screen">
+                <div class="screen-header">
+                    <h2>🔧 OFICINA DO ZÉ</h2>
+                    <button class="btn btn-back" onclick="GameMain.returnToCampaign()">[ ← VOLTAR ]</button>
+                </div>
+                <div class="screen-body">
+                    <div id="workshop-info" class="scrollable-box" style="margin-bottom:0; flex: 0 0 auto; height: auto;"></div>
+                    <select id="sel-veh-workshop" class="btn" style="width:100%; background: var(--bg-color); color: var(--text-color); margin: 0; flex-shrink: 0;"></select>
+                    <button class="btn" style="margin: 0; flex-shrink: 0;" onclick="GameMain.doRepair()">[ MANDAR CONSERTAR — R$ 300 ]</button>
+                    <div id="workshop-result" style="margin-top:5px; flex-shrink: 0;"></div>
+                </div>
+            </section>
+
+            <!-- TELA: OCORRÊNCIAS -->
+            <section id="screen-occurrence" class="screen">
+                <div class="screen-header">
+                    <h2>OCORRÊNCIAS 🚨</h2>
+                    <button class="btn btn-back" onclick="GameMain.returnToCampaign()">[ ← VOLTAR ]</button>
+                </div>
+
+                <!-- área scrollável -->
+                <div style="flex: 1; overflow-y: auto; min-height: 0; display: flex; flex-direction: column; gap: 10px; padding-right: 5px;">
+                    <div id="occurrence-info" style="border: 1px solid var(--text-color); padding: 15px; flex-shrink: 0;">
+                        Nenhuma ocorrência ativa no momento.
+                    </div>
+
+                    <div id="dispatch-form" class="hidden" style="display: flex; flex-direction: column; gap: 10px; flex-shrink: 0;">
+                        <div style="display: flex; gap: 15px; justify-content: space-between;">
+                            <label style="flex: 1; font-size: 1.2rem;">
+                                Militares a enviar:
+                                <select id="num-chars" class="btn" style="margin: 5px 0 0 0; width: 100%; background: var(--bg-color); color: var(--text-color);" onchange="GameMain.setupDynamicSelectors()"></select>
+                            </label>
+                            <label style="flex: 1; font-size: 1.2rem;">
+                                Viaturas a enviar:
+                                <select id="num-vehs" class="btn" style="margin: 5px 0 0 0; width: 100%; background: var(--bg-color); color: var(--text-color);" onchange="GameMain.setupDynamicSelectors()"></select>
+                            </label>
+                        </div>
+
+                        <div id="dynamic-selectors" style="display: flex; flex-direction: column; gap: 8px;"></div>
+
+                        <div id="synergy-hint" style="font-size:0.9rem; min-height:18px; color: #00ff88; white-space: pre-wrap;"></div>
+                    </div>
+                </div>
+
+                <!-- botão fixo no rodapé -->
+                <button id="btn-dispatch" class="hidden btn" style="margin: 10px 0 0 0; flex-shrink: 0;" onclick="GameMain.dispatchTeam()">[ DESPACHAR ]</button>
+            </section>
+            
+            <!-- TELA: HISTÓRICO -->
+            <section id="screen-history" class="screen">
+                <div class="screen-header">
+                    <h2>HISTÓRICO 📜</h2>
+                    <button class="btn btn-back" onclick="GameMain.returnToMenu()">[ ← VOLTAR ]</button>
+                </div>
+                <div class="screen-body">
+                    <div id="history-content" class="scrollable-box" style="margin-bottom:0;">
+                        Nenhum registro encontrado.
+                    </div>
+                </div>
+            </section>
+            
+            <!-- TELA: CONFIGURAÇÕES -->
+            <section id="screen-settings" class="screen">
+                <div class="screen-header">
+                    <h2>CONFIGURAÇÕES ⚙️</h2>
+                    <button class="btn btn-back" onclick="GameMain.returnToMenu()">[ ← VOLTAR ]</button>
+                </div>
+                <div class="screen-body">
+                    <div class="scrollable-box" style="margin-bottom:0; display: flex; flex-direction: column; gap: 20px;">
+                        <div>
+                            <label style="cursor: pointer; display: flex; align-items: center; gap: 10px;">
+                                <input type="checkbox" id="config-crt" checked onchange="GameMain.saveSettings()">
+                                Ativar Efeito Visual CRT (Monitor Antigo)
+                            </label>
+                        </div>
+                        <div style="border-top: 1px dashed var(--text-color); padding-top: 15px;">
+                            <p style="margin-bottom: 10px; color: #f0a500;">▶ BOMBEIROS</p>
+                            <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                                <button class="btn" style="margin:0; flex: 1 1 40%;" onclick="GameMain.settingsListBombeiros()">[ LISTAR ]</button>
+                                <button class="btn" style="margin:0; flex: 1 1 40%;" onclick="GameMain.settingsAddBombeiro()">[ ADICIONAR ]</button>
+                                <button class="btn" style="margin:0; flex: 1 1 40%;" onclick="GameMain.settingsEditBombeiro()">[ EDITAR ]</button>
+                                <button class="btn" style="margin:0; flex: 1 1 40%; color: var(--alert-color); border-color: var(--alert-color);" onclick="GameMain.settingsRemoveBombeiro()">[ REMOVER ]</button>
+                            </div>
+                        </div>
+
+                        <div style="border-top: 1px dashed var(--text-color); padding-top: 15px;">
+                            <p style="margin-bottom: 10px; color: #f0a500;">▶ VIATURAS</p>
+                            <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                                <button class="btn" style="margin:0; flex: 1 1 40%;" onclick="GameMain.settingsListViaturas()">[ LISTAR ]</button>
+                                <button class="btn" style="margin:0; flex: 1 1 40%;" onclick="GameMain.settingsAddViatura()">[ ADICIONAR ]</button>
+                            </div>
+                        </div>
+
+                        <div id="settings-subpanel" style="display:none; flex-direction: column; gap: 10px; border: 1px dashed #f0a500; padding: 15px;"></div>
+
+                        <div style="padding-top: 20px; border-top: 1px dashed var(--text-color);">
+                            <button class="btn" style="color: var(--alert-color); border-color: var(--alert-color); margin: 0;" onclick="GameMain.resetSaveFile()">[ APAGAR SAVE ]</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TELA: FIM DE JOGO -->
+            <section id="screen-endgame" class="screen" style="text-align: center; justify-content: center;">
+                <h1 class="glitch" id="endgame-title" data-text="GAME OVER">GAME OVER</h1>
+                <p class="subtitle" id="endgame-desc" style="font-size: 1.5rem; margin-top: 20px;"></p>
+                <div id="endgame-stats" style="margin: 20px 0; border: 1px dashed var(--text-color); padding: 20px;"></div>
+                <button class="btn mt-2" onclick="GameMain.returnToMenu()">[ VOLTAR AO MENU ]</button>
+            </section>
+        </main>
+    </div>
+
+    <!-- SCRIPTS -->
+    <script src="js/data.js"></script>
+    <script src="js/engine.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>
