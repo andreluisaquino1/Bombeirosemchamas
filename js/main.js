@@ -378,12 +378,15 @@ const GameMain = {
         }
 
         // Gerar selects de viaturas
+        const currentOcc = (GameEngine.state.activeOccurrences || []).find(o => o.id === this._selectedOccId);
+        const occTags = currentOcc ? (currentOcc.tags || []) : [];
+
         for (let i = 0; i < numV; i++) {
             const label = document.createElement("p");
             label.style.margin = "8px 0 2px 0";
             label.style.fontSize = "1.1rem";
             label.innerText = `Viatura #${i+1}:`;
-            
+
             const select = document.createElement("select");
             select.id = `sel-veh-${i}`;
             select.className = "btn";
@@ -394,11 +397,26 @@ const GameMain = {
             select.onchange = () => this._updateSynergyHint();
 
             GameEngine.state.fleet.forEach(v => {
-                select.innerHTML += `<option value="${v.id}">${v.name} — ${v.condition}%</option>`;
+                const isRestricted = v.restrictToTags && v.restrictToTags.length > 0
+                    && !v.restrictToTags.some(t => occTags.includes(t));
+                const optLabel = isRestricted
+                    ? `${v.name} — ${v.condition}% ⛔ Apenas em ocorrências aquáticas`
+                    : `${v.name} — ${v.condition}%`;
+                const opt = document.createElement('option');
+                opt.value = v.id;
+                opt.text = optLabel;
+                opt.disabled = isRestricted;
+                if (isRestricted) opt.style.color = '#555';
+                select.appendChild(opt);
             });
 
-            if (i < GameEngine.state.fleet.length) {
-                select.selectedIndex = i;
+            // Pré-selecionar a i-ésima viatura não restrita
+            let picked = 0;
+            for (let j = 0; j < select.options.length; j++) {
+                if (!select.options[j].disabled) {
+                    if (picked === i) { select.selectedIndex = j; break; }
+                    picked++;
+                }
             }
 
             container.appendChild(label);
@@ -497,6 +515,20 @@ const GameMain = {
         if (new Set(vehIds).size !== vehIds.length) {
             alert("Erro: Você não pode enviar a mesma viatura mais de uma vez!");
             return;
+        }
+
+        // Validar restrições de viatura por tipo de ocorrência
+        const occForDispatch = (GameEngine.state.activeOccurrences || []).find(o => o.id === this._selectedOccId);
+        const occTagsForDispatch = occForDispatch ? (occForDispatch.tags || []) : [];
+        for (const vId of vehIds) {
+            const v = GameEngine.state.fleet.find(v => v.id === vId);
+            if (v && v.restrictToTags && v.restrictToTags.length > 0) {
+                const match = v.restrictToTags.some(t => occTagsForDispatch.includes(t));
+                if (!match) {
+                    alert(`⛔ "${v.name}" só pode ser usada em ocorrências aquáticas.\nSelecione outra viatura.`);
+                    return;
+                }
+            }
         }
 
         const result = GameEngine.resolveOccurrence(this._selectedOccId, charIds, vehIds);

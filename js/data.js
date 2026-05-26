@@ -105,7 +105,7 @@ const GameData = {
         { id: 'v4', name: 'Caminhonete Operacional', desc: 'Pula mais que cavalo brabo.', condition: 100, fuel: 100, baseFailChance: 0.1, type: 'Apoio' },
         { id: 'v5', name: 'Moto do Militar', desc: 'Chega rápido, se não furar o pneu.', condition: 100, fuel: 100, baseFailChance: 0.2, type: 'Apoio' },
         { id: 'v6', name: 'Caminhão Velho da Prefeitura', desc: 'Ele ainda funciona. Supostamente.', condition: 50, fuel: 100, baseFailChance: 0.4, type: 'Caminhão' },
-        { id: 'v7', name: 'Lancha de Resgate', desc: 'Fica parada 90% do tempo.', condition: 100, fuel: 100, baseFailChance: 0.1, type: 'Aquático' },
+        { id: 'v7', name: 'Lancha de Resgate', desc: 'Fica parada 90% do tempo. Quando a água chama, ela responde.', condition: 100, fuel: 100, baseFailChance: 0.1, type: 'Aquático', restrictToTags: ['aquático'] },
         { id: 'v8', name: 'Carretinha de Equipamentos', desc: 'Um dia a roda vai soltar.', condition: 80, fuel: 0, baseFailChance: 0.3, type: 'Reboque' }
     ],
 
