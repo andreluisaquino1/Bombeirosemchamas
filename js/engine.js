@@ -185,6 +185,56 @@ const GameEngine = {
         return GameData.synergies.find(s => s.profileKey === charProfile && s.vehicleId === vehicleId) || null;
     },
 
+    // ─── LOGÍSTICA DE PESSOAL ─────────────────────────────────
+
+    // Custo diário de manutenção baseado no posto do militar
+    _getMaintCost: function(charName) {
+        if (charName.startsWith('BC')) return 15;
+        if (charName.startsWith('SGT') || charName.startsWith('SUB')) return 20;
+        return 30; // TEN e outros postos
+    },
+
+    // Custo único de contratação
+    _getHireCost: function(charName) {
+        if (charName.startsWith('BC')) return 150;
+        if (charName.startsWith('SGT') || charName.startsWith('SUB')) return 250;
+        return 400; // TEN e outros postos
+    },
+
+    // Retorna custo diário total da tropa atual
+    getDailyMaintenance: function() {
+        return (this.state.troop || []).reduce((total, c) => total + this._getMaintCost(c.name), 0);
+    },
+
+    // Contrata um militar do banco de dados
+    hireCharacter: function(charId) {
+        const char = GameData.characters.find(c => c.id === charId);
+        if (!char) return { success: false, text: 'Militar não encontrado.' };
+        const cost = this._getHireCost(char.name);
+        if (this.state.money < cost) {
+            return { success: false, text: `Fundos insuficientes! Contratar ${char.name} custa R$${cost}. Você tem R$${this.state.money.toFixed(0)}.` };
+        }
+        this.state.money -= cost;
+        this.state.troop.push({ ...char, energy: 100, missionCount: 0, dayMissions: 0 });
+        this.addLog(`[CONTRATAÇÃO] ${char.name} (${char.profile}) integrado(a) à guarnição. R$-${cost}`, 'normal');
+        this.saveGame();
+        return { success: true, char, cost };
+    },
+
+    // Transfere um militar para outra unidade (remove da tropa)
+    transferOutCharacter: function(idx) {
+        if ((this.state.troop || []).length <= 3) {
+            return { success: false, text: 'Tropa mínima é de 3 militares. Não é possível transferir.' };
+        }
+        const char = this.state.troop[idx];
+        if (!char) return { success: false, text: 'Militar não encontrado.' };
+        this.state.troop.splice(idx, 1);
+        this.state.moral = Math.max(-20, this.state.moral - 2);
+        this.addLog(`[TRANSFERÊNCIA] ${char.name} transferido(a) para outra unidade. Moral: -2`, 'alert');
+        this.saveGame();
+        return { success: true, char };
+    },
+
     resolveOccurrence: function(occId, charIds, vehicleIds) {
         if (!this.state.activeOccurrences) this.state.activeOccurrences = [];
         const occIndex = this.state.activeOccurrences.findIndex(o => o.id === occId);

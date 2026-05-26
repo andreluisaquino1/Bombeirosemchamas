@@ -84,6 +84,7 @@
                     <button class="btn" onclick="GameMain.viewQuarter()">[V] VER QUARTEL</button>
                     <button class="btn" onclick="GameMain.viewOccurrences()">[O] OCORRÊNCIAS</button>
                     <button class="btn" onclick="GameMain.openWorkshop()">[W] OFICINA DO ZÉ</button>
+                    <button class="btn" onclick="GameMain.openPersonnel()">[P] GESTÃO DE PESSOAL</button>
                     <button class="btn" onclick="GameMain.nextDay()">[N] PRÓXIMO DIA</button>
                 </div>
                 <div class="log-preview" id="log-preview">
@@ -204,6 +205,17 @@
                             <button class="btn" style="color: var(--alert-color); border-color: var(--alert-color); margin: 0;" onclick="GameMain.resetSaveFile()">[ APAGAR SAVE ]</button>
                         </div>
                     </div>
+                </div>
+            </section>
+
+            <!-- TELA: GESTÃO DE PESSOAL -->
+            <section id="screen-personnel" class="screen">
+                <div class="screen-header">
+                    <h2>👥 GESTÃO DE PESSOAL</h2>
+                    <button class="btn btn-back" onclick="GameMain.returnToCampaign()">[ ← VOLTAR ]</button>
+                </div>
+                <div class="screen-body">
+                    <div id="personnel-content" class="scrollable-box" style="margin-bottom:0; flex: 1;"></div>
                 </div>
             </section>
 

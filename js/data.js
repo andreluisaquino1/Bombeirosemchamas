@@ -49,39 +49,49 @@ const GameData = {
         { max: 100, title: "Lendas de Barra do Corda 👑" }
     ],
 
-    // Placeholder para próximas fases
+    // 14 perfis disponíveis para os militares
     profiles: {
-        'Gambiarreiro': { desc: 'Resolve problemas improváveis mas pode quebrar equipamentos.', modifiers: { success: 0.1, fail: 0.1, chaos: 0.2 } },
-        'Novato': { desc: 'Faz muita pergunta, atrapalha um pouco.', modifiers: { success: -0.05, fail: 0.1, chaos: 0.1 } },
-        'Líder dos BC': { desc: 'Tenta manter a ordem. Falha miseravelmente.', modifiers: { success: 0.1, fail: -0.05, chaos: 0.0 } },
-        'Ímã de Confusão': { desc: 'Se algo pode dar errado, vai dar errado com ele(a).', modifiers: { success: 0.0, fail: 0.15, chaos: 0.3 } },
-        'Calmo': { desc: 'Fica calmo até demais nas piores situações.', modifiers: { success: 0.05, fail: -0.05, chaos: -0.1 } },
-        'Acelerado': { desc: 'Faz tudo rápido. E quase tudo errado.', modifiers: { success: 0.05, fail: 0.1, chaos: 0.1 } },
-        'Pé Quente': { desc: 'Incrivelmente sortudo.', modifiers: { success: 0.2, fail: -0.1, chaos: 0.0 } },
-        'Sobrevivente': { desc: 'Já viu o inferno e voltou.', modifiers: { success: 0.1, fail: -0.1, chaos: 0.0 } },
-        'Lenda do Quartel': { desc: 'Uma lenda viva. Melhora a reputação só de respirar.', modifiers: { success: 0.2, fail: -0.1, chaos: -0.1 } },
-        'Super Lento': { desc: 'Parece que está em câmera lenta. Mas não erra.', modifiers: { success: 0.15, fail: -0.2, chaos: -0.1 } },
-        'Veterano': { desc: 'Conhece as manhas. Reduz erros gerais.', modifiers: { success: 0.1, fail: -0.1, chaos: -0.05 } },
-        'Super Lenda do Quartel': { desc: 'Comanda tudo. Resolve qualquer coisa. Supostamente.', modifiers: { success: 0.3, fail: -0.2, chaos: -0.2 } }
+        'Novato':           { desc: 'Faz muita pergunta, atrapalha um pouco.',                      modifiers: { success: -0.05, fail: 0.10, chaos:  0.10 } },
+        'Dorminhoco':       { desc: 'Dorme onde pode. A operação pode esperar.',                    modifiers: { success: -0.10, fail: 0.10, chaos:  0.05 } },
+        'Estressado':       { desc: 'Alta adrenalina. Resolve rápido, mas impulsivamente.',         modifiers: { success:  0.05, fail: 0.10, chaos:  0.25 } },
+        'Ímã de Confusão':  { desc: 'Se algo pode dar errado, vai dar errado com ele(a).',         modifiers: { success:  0.00, fail: 0.15, chaos:  0.30 } },
+        'Acelerado':        { desc: 'Faz tudo rápido. E quase tudo errado.',                        modifiers: { success:  0.05, fail: 0.10, chaos:  0.10 } },
+        'Gambiarreiro':     { desc: 'Resolve problemas improváveis mas pode quebrar equipamentos.', modifiers: { success:  0.10, fail: 0.10, chaos:  0.20 } },
+        'Líder dos BC':     { desc: 'Tenta manter a ordem. Falha miseravelmente.',                  modifiers: { success:  0.10, fail:-0.05, chaos:  0.00 } },
+        'Sobrevivente':     { desc: 'Já viu o inferno e voltou.',                                   modifiers: { success:  0.10, fail:-0.10, chaos:  0.00 } },
+        'Calmo':            { desc: 'Fica calmo até demais nas piores situações.',                  modifiers: { success:  0.05, fail:-0.05, chaos: -0.10 } },
+        'Veterano':         { desc: 'Conhece as manhas. Reduz erros gerais.',                       modifiers: { success:  0.10, fail:-0.10, chaos: -0.05 } },
+        'Metódico':         { desc: 'Segue o protocolo à risca. Lento, mas certeiro.',              modifiers: { success:  0.05, fail:-0.10, chaos: -0.15 } },
+        'Pé Quente':        { desc: 'Incrivelmente sortudo.',                                       modifiers: { success:  0.20, fail:-0.10, chaos:  0.00 } },
+        'Técnico':          { desc: 'Domina os equipamentos. Minimiza falhas técnicas.',            modifiers: { success:  0.15, fail:-0.15, chaos: -0.20 } },
+        'Lenda do Quartel': { desc: 'Uma lenda viva. Melhora a reputação só de respirar.',         modifiers: { success:  0.20, fail:-0.10, chaos: -0.10 } },
     },
 
     characters: [
-        { id: 'c1', name: 'BC Ribamar', profile: 'Gambiarreiro', desc: 'Sempre tem uma fita isolante no bolso.', frase: 'Se funcionar, não mexe.' },
-        { id: 'c2', name: 'BC Carvalho', profile: 'Novato', desc: 'Ainda acha que ser bombeiro é igual filme americano.', frase: 'Onde liga a sirene?' },
-        { id: 'c3', name: 'BC Laide', profile: 'Líder dos BC', desc: 'Grita muito, resolve pouco.', frase: 'Ninguém sai sem checklist.' },
-        { id: 'c4', name: 'BC Luh', profile: 'Ímã de Confusão', desc: 'Perdeu um rádio na primeira semana.', frase: 'Isso provavelmente vai dar errado.' },
-        { id: 'c5', name: 'BC Reis', profile: 'Calmo', desc: 'Fala baixo até no meio do fogo.', frase: 'Sem desespero.' },
-        { id: 'c6', name: 'BC Nego Sousa', profile: 'Gambiarreiro', desc: 'Consegue ligar a viatura fazendo chupeta com um clipe de papel.', frase: 'Confia na gambiarra.' },
-        { id: 'c7', name: 'BC Thayrana', profile: 'Calmo', desc: 'Não se assusta nem com onça pintada.', frase: 'Vai dar certo.' },
-        { id: 'c8', name: 'SGT Acioly', profile: 'Calmo', desc: 'Paciência de monge budista.', frase: 'Tudo sob controle.' },
-        { id: 'c9', name: 'SGT Rabelo', profile: 'Acelerado', desc: 'Corre primeiro, pensa depois.', frase: 'Já tô indo!' },
-        { id: 'c10', name: 'TEN Vasconcelos', profile: 'Pé Quente', desc: 'Sempre escapa das escalas ruins.', frase: 'Hoje dá bom.' },
-        { id: 'c11', name: 'TEN Thayane', profile: 'Sobrevivente', desc: 'A viatura capotou 3 vezes, ela saiu ilesa.', frase: 'Já passei por pior.' },
-        { id: 'c12', name: 'SGT Eduardo', profile: 'Lenda do Quartel', desc: 'As chamas apagam sozinhas por respeito.', frase: 'No meu tempo era pior.' },
-        { id: 'c13', name: 'SGT Vieira', profile: 'Super Lento', desc: 'Leva 10 minutos para calçar o coturno.', frase: 'Calma...' },
-        { id: 'c14', name: 'SUB Guilhom', profile: 'Veterano', desc: 'Sabe mais que o manual técnico.', frase: 'Já vi de tudo.' },
-        { id: 'c15', name: 'TEN Aquino', profile: 'Super Lenda do Quartel', desc: 'Resolve a ocorrência só de olhar feio para ela. Supostamente.', frase: 'O problema já foi resolvido.' },
-        { id: 'c16', name: 'TEN Carmo Sousa', profile: 'Calmo', desc: 'Nunca aumenta a voz.', frase: 'Respira primeiro.' }
+        // ── BCs ────────────────────────────────────────────────────────────────────
+        { id: 'c1',  name: 'BC Ribamar',      profile: 'Gambiarreiro',    desc: 'Sempre tem uma fita isolante no bolso.',                               frase: 'Se funcionar, não mexe.' },
+        { id: 'c2',  name: 'BC Carvalho',     profile: 'Novato',          desc: 'Ainda acha que ser bombeiro é igual filme americano.',                 frase: 'Onde liga a sirene?' },
+        { id: 'c3',  name: 'BC Laide',        profile: 'Líder dos BC',    desc: 'Grita muito, resolve pouco.',                                          frase: 'Ninguém sai sem checklist.' },
+        { id: 'c4',  name: 'BC Luh',          profile: 'Ímã de Confusão', desc: 'Perdeu um rádio na primeira semana.',                                  frase: 'Isso provavelmente vai dar errado.' },
+        { id: 'c5',  name: 'BC Reis',         profile: 'Calmo',           desc: 'Fala baixo até no meio do fogo.',                                      frase: 'Sem desespero.' },
+        { id: 'c6',  name: 'BC Nego Sousa',   profile: 'Acelerado',       desc: 'Está no local antes mesmo do rádio terminar a chamada.',               frase: 'Já tô indo!' },
+        { id: 'c7',  name: 'BC Thayrana',     profile: 'Metódico',        desc: 'Confere o equipamento três vezes antes de sair. Duas vezes depois.',   frase: 'Vamos pelo protocolo.' },
+        // ── SGTs / SUBs ─────────────────────────────────────────────────────────────
+        { id: 'c8',  name: 'SGT Acioly',      profile: 'Dorminhoco',      desc: 'Paciência de monge budista — principalmente porque está dormindo.',     frase: 'Cinco minutinhos...' },
+        { id: 'c9',  name: 'SGT Rabelo',      profile: 'Estressado',      desc: 'Corre primeiro, grita depois, pensa quando der.',                      frase: 'Já tô indo!' },
+        { id: 'c12', name: 'SGT Eduardo',     profile: 'Lenda do Quartel',desc: 'As chamas apagam sozinhas por respeito.',                              frase: 'No meu tempo era pior.' },
+        { id: 'c13', name: 'SGT Vieira',      profile: 'Técnico',         desc: 'Conhece cada equipamento do quartel melhor que o fabricante.',         frase: 'Vamos checar os protocolos.' },
+        { id: 'c14', name: 'SUB Guilhom',     profile: 'Veterano',        desc: 'Sabe mais que o manual técnico.',                                      frase: 'Já vi de tudo.' },
+        // ── TENs ────────────────────────────────────────────────────────────────────
+        { id: 'c10', name: 'TEN Vasconcelos', profile: 'Pé Quente',       desc: 'Sempre escapa das escalas ruins.',                                     frase: 'Hoje dá bom.' },
+        { id: 'c11', name: 'TEN Thayane',     profile: 'Sobrevivente',    desc: 'A viatura capotou 3 vezes, ela saiu ilesa.',                           frase: 'Já passei por pior.' },
+        { id: 'c15', name: 'TEN Aquino',      profile: 'Lenda do Quartel',desc: 'Resolve a ocorrência só de olhar feio para ela. Supostamente.',        frase: 'O problema já foi resolvido.' },
+        { id: 'c16', name: 'TEN Carmo Sousa', profile: 'Calmo',           desc: 'Nunca aumenta a voz.',                                                 frase: 'Respira primeiro.' },
+        { id: 'c17', name: 'TEN Cassio Murilo',profile: 'Gambiarreiro',   desc: 'Resolve tudo no improviso, de preferência com fita isolante e oração.',frase: 'Não é gambiarra, é solução criativa.' },
+        { id: 'c18', name: 'TEN Sobrinho',    profile: 'Líder dos BC',    desc: 'Faz questão de reunião antes de qualquer operação. Curta ou longa.',   frase: 'Só vai depois do briefing.' },
+        { id: 'c19', name: 'TEN Kelvin',      profile: 'Técnico',         desc: 'Conhece cada especificação técnica dos equipamentos de cor.',          frase: 'Está dentro do protocolo.' },
+        { id: 'c20', name: 'TEN Sandy',       profile: 'Calmo',           desc: 'Mantém o sorriso mesmo quando o fogo é na própria viatura.',           frase: 'Tudo vai ficar bem.' },
+        { id: 'c21', name: 'TEN Roberto',     profile: 'Veterano',        desc: 'Já viu tanto que nada mais o surpreende. Especialmente falhas do sistema.', frase: 'Isso sempre acontece.' },
     ],
 
     vehicles: [
