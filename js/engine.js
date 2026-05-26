@@ -29,8 +29,6 @@ const GameEngine = {
 
     resetGame: function(difficulty = 'normal') {
         const diff = GameData.difficulties[difficulty] || GameData.difficulties.normal;
-        const bcs = GameData.characters.filter(c => c.name.startsWith('BC'));
-        const others = GameData.characters.filter(c => !c.name.startsWith('BC'));
 
         const shuffle = (array) => {
             let currentIndex = array.length, randomIndex;
@@ -42,12 +40,13 @@ const GameEngine = {
             return array;
         };
 
-        const shuffledBcs = shuffle([...bcs]);
-        const shuffledOthers = shuffle([...others]);
+        const bcs   = shuffle(GameData.characters.filter(c => c.name.startsWith('BC')));
+        const sgts  = shuffle(GameData.characters.filter(c => c.name.startsWith('SGT') || c.name.startsWith('SUB')));
+        const tens  = shuffle(GameData.characters.filter(c => c.name.startsWith('TEN')));
         const shuffledVehicles = shuffle([...GameData.vehicles]);
 
         // Adiciona energia e missões despachadas a cada militar
-        const assignEnergy = (c) => ({ ...c, energy: 100, missionCount: 0 });
+        const assignEnergy = (c) => ({ ...c, energy: 100, missionCount: 0, dayMissions: 0 });
 
         const goals = GameData.weeklyGoals;
         const firstGoal = { ...goals[Math.floor(Math.random() * goals.length)] };
@@ -62,10 +61,10 @@ const GameEngine = {
             campaignName: '',
             history: [],
             troop: [
-                assignEnergy(shuffledBcs[0]),
-                assignEnergy(shuffledBcs[1]),
-                assignEnergy(shuffledOthers[0]),
-                assignEnergy(shuffledOthers[1])
+                assignEnergy(tens[0]),   // 1 TEN aleatório
+                assignEnergy(sgts[0]),   // 1 SGT ou SUB aleatório
+                assignEnergy(bcs[0]),    // BC #1 aleatório
+                assignEnergy(bcs[1]),    // BC #2 aleatório
             ],
             fleet: [
                 { ...shuffledVehicles[0] },
@@ -187,26 +186,33 @@ const GameEngine = {
 
     // ─── LOGÍSTICA DE PESSOAL ─────────────────────────────────
 
-    // Custo diário de manutenção baseado no posto do militar
-    _getMaintCost: function(charName) {
-        if (charName.startsWith('BC')) return 15;
-        if (charName.startsWith('SGT') || charName.startsWith('SUB')) return 20;
-        return 30; // TEN e outros postos
+    // Retorna o posto do militar: 'TEN', 'SGT' ou 'BC'
+    _getRank: function(charName) {
+        if (charName.startsWith('TEN')) return 'TEN';
+        if (charName.startsWith('SGT') || charName.startsWith('SUB')) return 'SGT';
+        return 'BC';
     },
 
-    // Custo único de contratação
+    // Custo diário baseado no perfil (não no posto)
+    _getMaintCostForChar: function(char) {
+        const profile = GameData.profiles[char.profile];
+        return profile ? (profile.maintCost || 15) : 15;
+    },
+
+    // Custo único de contratação baseado no posto
     _getHireCost: function(charName) {
-        if (charName.startsWith('BC')) return 150;
-        if (charName.startsWith('SGT') || charName.startsWith('SUB')) return 250;
-        return 400; // TEN e outros postos
+        const rank = this._getRank(charName);
+        if (rank === 'BC') return 150;
+        if (rank === 'SGT') return 250;
+        return 400; // TEN
     },
 
     // Retorna custo diário total da tropa atual
     getDailyMaintenance: function() {
-        return (this.state.troop || []).reduce((total, c) => total + this._getMaintCost(c.name), 0);
+        return (this.state.troop || []).reduce((total, c) => total + this._getMaintCostForChar(c), 0);
     },
 
-    // Contrata um militar do banco de dados
+    // Contrata um novo militar (adiciona à tropa)
     hireCharacter: function(charId) {
         const char = GameData.characters.find(c => c.id === charId);
         if (!char) return { success: false, text: 'Militar não encontrado.' };
@@ -221,18 +227,45 @@ const GameEngine = {
         return { success: true, char, cost };
     },
 
-    // Transfere um militar para outra unidade (remove da tropa)
-    transferOutCharacter: function(idx) {
-        if ((this.state.troop || []).length <= 3) {
-            return { success: false, text: 'Tropa mínima é de 3 militares. Não é possível transferir.' };
+    // Troca um militar por outro do mesmo posto
+    transferAndHire: function(fromIdx, toCharId) {
+        const fromChar = this.state.troop[fromIdx];
+        if (!fromChar) return { success: false, text: 'Militar não encontrado.' };
+        const toChar = GameData.characters.find(c => c.id === toCharId);
+        if (!toChar) return { success: false, text: 'Substituto não encontrado.' };
+        if (this._getRank(fromChar.name) !== this._getRank(toChar.name)) {
+            return { success: false, text: 'Troca só é permitida entre militares do mesmo posto.' };
         }
-        const char = this.state.troop[idx];
-        if (!char) return { success: false, text: 'Militar não encontrado.' };
-        this.state.troop.splice(idx, 1);
-        this.state.moral = Math.max(-20, this.state.moral - 2);
-        this.addLog(`[TRANSFERÊNCIA] ${char.name} transferido(a) para outra unidade. Moral: -2`, 'alert');
+        const cost = this._getHireCost(toChar.name);
+        if (this.state.money < cost) {
+            return { success: false, text: `Fundos insuficientes! Custo da troca: R$${cost}.` };
+        }
+        this.state.money -= cost;
+        this.state.troop.splice(fromIdx, 1, { ...toChar, energy: 100, missionCount: 0, dayMissions: 0 });
+        this.addLog(`[TRANSFERÊNCIA] ${fromChar.name} saiu → ${toChar.name} (${toChar.profile}) assumiu a vaga. R$-${cost}`, 'normal');
         this.saveGame();
-        return { success: true, char };
+        return { success: true, fromChar, toChar };
+    },
+
+    // Nível 3: jogador escolhe o posto do reforço
+    claimLevel3Reinforcement: function(rankType) {
+        const currentIds = new Set(this.state.troop.map(c => c.id));
+        let available = GameData.characters.filter(c => {
+            if (currentIds.has(c.id)) return false;
+            return this._getRank(c.name) === rankType;
+        });
+        if (available.length === 0) {
+            available = GameData.characters.filter(c => !currentIds.has(c.id));
+        }
+        if (available.length === 0) {
+            return { success: false, text: 'Sem militares disponíveis!' };
+        }
+        const newChar = { ...available[Math.floor(Math.random() * available.length)], energy: 100, missionCount: 0, dayMissions: 0 };
+        this.state.troop.push(newChar);
+        this.state.pendingLevel3Choice = false;
+        this.addLog(`[NÍVEL 3] ${newChar.name} (${newChar.profile}) se juntou à guarnição!`, 'normal');
+        this.saveGame();
+        return { success: true, char: newChar };
     },
 
     resolveOccurrence: function(occId, charIds, vehicleIds) {
@@ -534,30 +567,39 @@ const GameEngine = {
     },
 
     unlockNewResources: function(level) {
-        const currentTroopIds = this.state.troop.map(c => c.id);
+        const currentTroopIds = new Set(this.state.troop.map(c => c.id));
         const currentFleetIds = this.state.fleet.map(v => v.id);
-
-        const availableChars = GameData.characters.filter(c => !currentTroopIds.includes(c.id));
         const availableVehs = GameData.vehicles.filter(v => !currentFleetIds.includes(v.id));
 
         let unlockMsg = `🎖️ [REFORÇO DO COMANDO] O Quartel subiu para o Nível ${level}!`;
-        
-        if (availableChars.length > 0) {
-            const index = Math.floor(Math.random() * availableChars.length);
-            const newChar = { ...availableChars[index], energy: 100, missionCount: 0 };
-            this.state.troop.push(newChar);
-            unlockMsg += `\n🧑‍🚒 ${newChar.name} (${newChar.profile}) se juntou à guarnição!`;
-        }
 
+        // ── Viatura nova (qualquer nível) ──────────────────────────
         if (availableVehs.length > 0) {
-            const index = Math.floor(Math.random() * availableVehs.length);
-            const newVeh = { ...availableVehs[index] };
+            const newVeh = { ...availableVehs[Math.floor(Math.random() * availableVehs.length)] };
             this.state.fleet.push(newVeh);
-            unlockMsg += `\n🚒 Viatura ${newVeh.name} foi integrada à frota!`;
+            unlockMsg += `\n🚒 Viatura ${newVeh.name} integrada à frota!`;
         }
 
-        this.addLog(unlockMsg, 'normal');
-        this.state.pendingUnlockMsg = unlockMsg;
+        // ── Nível 2: +1 militar aleatório (posto aleatório) ────────
+        if (level === 2) {
+            const available = GameData.characters.filter(c => !currentTroopIds.has(c.id));
+            if (available.length > 0) {
+                const newChar = { ...available[Math.floor(Math.random() * available.length)], energy: 100, missionCount: 0, dayMissions: 0 };
+                this.state.troop.push(newChar);
+                unlockMsg += `\n🧑‍🚒 ${newChar.name} (${newChar.profile}) se juntou à guarnição!`;
+            }
+            this.addLog(unlockMsg, 'normal');
+            this.state.pendingUnlockMsg = unlockMsg;
+        }
+
+        // ── Nível 3: jogador escolhe o posto do reforço ────────────
+        if (level === 3) {
+            this.state.pendingLevel3Choice = true;
+            unlockMsg += `\n👥 Você pode escolher um reforço no painel de Gestão de Pessoal!`;
+            this.addLog(unlockMsg, 'normal');
+            this.state.pendingUnlockMsg = unlockMsg;
+        }
+
         this.saveGame();
     },
 

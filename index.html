@@ -79,6 +79,14 @@
                 <p id="ui-campaign-name" style="text-align:center; color:#f0a500; font-size:1.1rem; margin-bottom:4px;"></p>
                 <p id="ui-rep-title" class="subtitle" style="margin-bottom: 8px; font-size: 1.2rem;"></p>
                 <div id="fleet-alerts" style="font-size:1.1rem; flex-shrink:0;"></div>
+                <div id="level3-banner" class="hidden" style="border: 2px solid #f0a500; padding: 10px; flex-shrink:0;">
+                    <p style="color:#f0a500; font-size:1.2rem; margin-bottom:6px;">🎖️ REFORÇO NÍVEL 3 — Escolha o posto do novo militar:</p>
+                    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                        <button class="btn" style="flex:1; color:#00ff88; border-color:#00ff88; margin:0;" onclick="GameMain.claimLevel3Reinforcement('BC')">[ BC — Bombeiro ]</button>
+                        <button class="btn" style="flex:1; color:#00ff88; border-color:#00ff88; margin:0;" onclick="GameMain.claimLevel3Reinforcement('SGT')">[ SGT/SUB — Sargento ]</button>
+                        <button class="btn" style="flex:1; color:#00ff88; border-color:#00ff88; margin:0;" onclick="GameMain.claimLevel3Reinforcement('TEN')">[ TEN — Tenente ]</button>
+                    </div>
+                </div>
                 <div id="weekly-goal-display" style="border:1px dashed #f0a500; padding:6px 10px; font-size:1.1rem; flex-shrink:0;"></div>
                 <div class="dashboard">
                     <button class="btn" onclick="GameMain.viewQuarter()">[V] VER QUARTEL</button>

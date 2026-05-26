@@ -71,6 +71,13 @@ const GameMain = {
             goalEl.innerHTML = `📋 <strong>META:</strong> ${g.text} &nbsp; <span style="color:#f0a500;">${prog}/${g.count}</span> <span style="color:#888;">(${daysLeft} dia(s))</span>`;
         }
 
+        // Banner de escolha nível 3
+        const level3Banner = document.getElementById('level3-banner');
+        if (level3Banner) {
+            if (GameEngine.state.pendingLevel3Choice) level3Banner.classList.remove('hidden');
+            else level3Banner.classList.add('hidden');
+        }
+
         // Alertas de viatura
         const alertEl = document.getElementById('fleet-alerts');
         if (alertEl && GameEngine.state.fleet) {
@@ -683,61 +690,102 @@ const GameMain = {
         GameUI.showScreen('screen-personnel');
     },
 
-    _renderPersonnelScreen: function() {
+    claimLevel3Reinforcement: function(rankType) {
+        const result = GameEngine.claimLevel3Reinforcement(rankType);
+        if (!result.success) { alert(result.text); return; }
+        GameUI.updateHeader();
+        this._updateCampaignScreen();
+        const preview = document.getElementById('log-preview');
+        if (preview) preview.innerHTML += `<div>[REFORÇO] 🎖️ ${result.char.name} (${result.char.profile}) se juntou à guarnição!</div>`;
+    },
+
+    _renderPersonnelScreen: function(activeTransferIdx = null) {
         const content = document.getElementById('personnel-content');
         const troop = GameEngine.state.troop || [];
         const troopIds = new Set(troop.map(c => c.id));
-        const available = GameData.characters.filter(c => !troopIds.has(c.id));
-
+        const allAvailable = GameData.characters.filter(c => !troopIds.has(c.id));
         const dailyTotal = GameEngine.getDailyMaintenance();
 
-        let html = '';
+        const rankLabel = r => r === 'TEN' ? 'TENENTES' : r === 'SGT' ? 'SARGENTOS / SUBTENENTES' : 'BOMBEIROS COMBATENTES';
 
-        // ── Tropa Atual ─────────────────────────────────────
-        html += `<div style="margin-bottom:10px;">
-            <p style="color:#f0a500; margin-bottom:6px;">👥 TROPA ATUAL — ${troop.length} militar(es)</p>
-            <p style="font-size:1rem; margin-bottom:8px; color:#aaa;">Custo de manutenção diário total: <strong>R$ ${dailyTotal}</strong>/dia</p>`;
+        let html = `<p style="color:#f0a500; margin-bottom:4px;">👥 TROPA ATUAL — ${troop.length} militar(es)</p>
+            <p style="font-size:1rem; margin-bottom:8px; color:#aaa;">Manutenção total: <strong style="color:#f0a500;">R$ ${dailyTotal}/dia</strong></p>`;
 
-        troop.forEach((c, idx) => {
-            const maint = GameEngine._getMaintCost(c.name);
-            const energy = c.energy !== undefined ? c.energy : 100;
-            const fatigueLabel = energy <= 30 ? ' <span class="alert">⚠️ ESTRESSADO</span>' : energy <= 60 ? ' <span style="color:#f0a500;">😓 Cansado</span>' : '';
-            const canTransfer = troop.length > 3;
-            const btnTransfer = canTransfer
-                ? `<button class="btn" style="margin:4px 0 0 0; padding:3px 8px; font-size:1rem; color:var(--alert-color); border-color:var(--alert-color);" onclick="GameMain._transferOut(${idx})">[ TRANSFERIR ]</button>`
-                : `<button class="btn" style="margin:4px 0 0 0; padding:3px 8px; font-size:1rem; color:#555; border-color:#555;" disabled title="Tropa mínima: 3 militares">[ TRANSFERIR ]</button>`;
-            html += `<div style="border:1px dashed #555; padding:8px; margin-bottom:6px;">
-                <strong>${c.name}</strong> <span style="color:#aaa;">(${c.profile})</span> — <span style="color:#f0a500;">R$ ${maint}/dia</span>${fatigueLabel}<br>
-                <small style="color:#ccc;">${c.desc}</small><br>
-                ${btnTransfer}
-            </div>`;
+        // Agrupa por posto para exibição
+        const byRank = { TEN: [], SGT: [], BC: [] };
+        troop.forEach((c, idx) => byRank[GameEngine._getRank(c.name)].push({ c, idx }));
+
+        ['TEN', 'SGT', 'BC'].forEach(rank => {
+            if (byRank[rank].length === 0) return;
+            html += `<p style="color:#aaa; font-size:0.95rem; margin: 8px 0 4px 0; border-bottom:1px dotted #444; padding-bottom:2px;">${rankLabel(rank)}</p>`;
+
+            byRank[rank].forEach(({ c, idx }) => {
+                const maint = GameEngine._getMaintCostForChar(c);
+                const energy = c.energy !== undefined ? c.energy : 100;
+                const fatigue = energy <= 30 ? ' ⚠️' : energy <= 60 ? ' 😓' : '';
+                // Candidatos para troca: mesmo posto, fora da tropa
+                const sameRankAvail = allAvailable.filter(a => GameEngine._getRank(a.name) === rank);
+
+                if (activeTransferIdx === idx) {
+                    // Modo seleção de troca
+                    html += `<div style="border:2px solid #f0a500; padding:8px; margin-bottom:6px;">
+                        <p><strong>${c.name}</strong> <span style="color:#f0a500;">← TROCANDO</span></p>
+                        <p style="font-size:1rem; margin-bottom:6px; color:#ccc;">Selecione o substituto (mesmo posto):</p>`;
+                    if (sameRankAvail.length === 0) {
+                        html += `<p style="color:#888; font-size:1rem;">Nenhum ${rankLabel(rank).toLowerCase()} disponível para troca.</p>`;
+                    } else {
+                        sameRankAvail.forEach(a => {
+                            const hireCost = GameEngine._getHireCost(a.name);
+                            const aMaint = GameEngine._getMaintCostForChar(a);
+                            const canAfford = GameEngine.state.money >= hireCost;
+                            const col = canAfford ? '#00ff88' : '#555';
+                            html += `<div style="border:1px dashed #555; padding:6px; margin-bottom:4px;">
+                                <strong>${a.name}</strong> (${a.profile}) — R$${aMaint}/dia mant.<br>
+                                <small style="color:#ccc;">${a.desc}</small><br>
+                                <small style="color:#f0a500;">Custo da troca: R$${hireCost}</small><br>
+                                <button class="btn" style="margin:4px 0 0 0; padding:3px 8px; font-size:1rem; color:${col}; border-color:${col};" ${canAfford ? '' : 'disabled'} onclick="GameMain._confirmTransfer(${idx}, '${a.id}')">[ CONFIRMAR TROCA ]</button>
+                            </div>`;
+                        });
+                    }
+                    html += `<button class="btn" style="margin:6px 0 0 0; padding:3px 8px; font-size:1rem; color:#888; border-color:#888;" onclick="GameMain._renderPersonnelScreen()">[ CANCELAR ]</button>
+                    </div>`;
+                } else {
+                    const hasCandidates = sameRankAvail.length > 0;
+                    const col = hasCandidates ? '#f0a500' : '#555';
+                    const dis = hasCandidates ? '' : 'disabled';
+                    const title = hasCandidates ? '' : `title="Nenhum ${rankLabel(rank).toLowerCase()} disponível"`;
+                    html += `<div style="border:1px dashed #555; padding:8px; margin-bottom:6px;">
+                        <strong>${c.name}</strong> <span style="color:#aaa;">(${c.profile})</span>${fatigue} — <span style="color:#f0a500;">R$${maint}/dia</span><br>
+                        <small style="color:#ccc;">${c.desc}</small><br>
+                        <button class="btn" style="margin:4px 0 0 0; padding:3px 8px; font-size:1rem; color:${col}; border-color:${col};" ${dis} ${title} onclick="GameMain._renderPersonnelScreen(${idx})">[ TROCAR ]</button>
+                    </div>`;
+                }
+            });
         });
 
-        html += `</div>`;
+        // ── Contratar Novo ────────────────────────────────────────
+        html += `<div style="border-top:1px dashed var(--text-color); padding-top:12px; margin-top:8px;">
+            <p style="color:#f0a500; margin-bottom:4px;">📋 CONTRATAR NOVO MILITAR</p>
+            <p style="font-size:0.95rem; color:#888; margin-bottom:8px;">Adiciona à tropa sem remover ninguém (aumenta custo diário).</p>`;
 
-        // ── Disponíveis para Contratação ─────────────────────
-        html += `<div style="border-top:1px dashed var(--text-color); padding-top:12px; margin-top:4px;">
-            <p style="color:#f0a500; margin-bottom:6px;">📋 DISPONÍVEIS PARA CONTRATAÇÃO</p>`;
-
-        if (available.length === 0) {
-            html += `<p style="color:#888; font-size:1.1rem;">Todos os militares do cadastro já estão na tropa.</p>`;
+        if (allAvailable.length === 0) {
+            html += `<p style="color:#888;">Todos os militares já estão na tropa.</p>`;
         } else {
-            available.forEach(c => {
+            allAvailable.forEach(c => {
                 const cost = GameEngine._getHireCost(c.name);
-                const maint = GameEngine._getMaintCost(c.name);
+                const maint = GameEngine._getMaintCostForChar(c);
+                const rank = GameEngine._getRank(c.name);
                 const canAfford = GameEngine.state.money >= cost;
-                const btnColor = canAfford ? '#00ff88' : '#555';
-                const disabledAttr = canAfford ? '' : 'disabled';
+                const col = canAfford ? '#00ff88' : '#555';
                 html += `<div style="border:1px dashed #555; padding:8px; margin-bottom:6px;">
-                    <strong>${c.name}</strong> <span style="color:#aaa;">(${c.profile})</span><br>
+                    <strong>${c.name}</strong> <span style="color:#aaa;">(${c.profile}) [${rank}]</span><br>
                     <small style="color:#ccc;">${c.desc}</small><br>
                     <small><em>"${c.frase}"</em></small><br>
-                    <small style="color:#f0a500;">Contratação: R$ ${cost} &nbsp;|&nbsp; Manutenção: R$ ${maint}/dia</small><br>
-                    <button class="btn" style="margin:4px 0 0 0; padding:3px 8px; font-size:1rem; color:${btnColor}; border-color:${btnColor};" ${disabledAttr} onclick="GameMain._hire('${c.id}')">[ CONTRATAR ]</button>
+                    <small style="color:#f0a500;">Contratação: R$${cost} | Manutenção: R$${maint}/dia</small><br>
+                    <button class="btn" style="margin:4px 0 0 0; padding:3px 8px; font-size:1rem; color:${col}; border-color:${col};" ${canAfford ? '' : 'disabled'} onclick="GameMain._hire('${c.id}')">[ CONTRATAR ]</button>
                 </div>`;
             });
         }
-
         html += `</div>`;
         content.innerHTML = html;
     },
@@ -751,12 +799,13 @@ const GameMain = {
         this._renderPersonnelScreen();
     },
 
-    _transferOut: function(idx) {
-        const c = GameEngine.state.troop[idx];
-        if (!c) return;
-        const maint = GameEngine._getMaintCost(c.name);
-        if (!confirm(`Transferir ${c.name} para outra unidade?\n\n- Remove o militar da sua tropa\n- Economiza R$ ${maint}/dia\n- Reduz moral em 2\n\nEsta ação não pode ser desfeita.`)) return;
-        const result = GameEngine.transferOutCharacter(idx);
+    _confirmTransfer: function(fromIdx, toCharId) {
+        const fromChar = GameEngine.state.troop[fromIdx];
+        const toChar = GameData.characters.find(c => c.id === toCharId);
+        if (!fromChar || !toChar) return;
+        const cost = GameEngine._getHireCost(toChar.name);
+        if (!confirm(`Trocar ${fromChar.name} por ${toChar.name}?\nCusto: R$${cost}`)) return;
+        const result = GameEngine.transferAndHire(fromIdx, toCharId);
         if (!result.success) { alert(result.text); return; }
         GameUI.updateHeader();
         this._renderPersonnelScreen();
