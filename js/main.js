@@ -271,7 +271,8 @@ const GameMain = {
         document.getElementById('btn-dispatch').classList.add('hidden');
 
         if (occs.length === 0) {
-            occInfo.innerHTML = "O telefone não tocou. Quartel em paz. ☕";
+            occInfo.innerHTML = `<p>O telefone não tocou. Quartel em paz. ☕</p>
+                <button class="btn" style="margin-top:12px;" onclick="GameMain.returnToCampaign(); GameMain.nextDay();">[N] PRÓXIMO DIA →</button>`;
             form.classList.add('hidden');
             this._selectedOccId = null;
         } else {
@@ -987,4 +988,50 @@ const GameMain = {
 // Iniciar ao carregar a página
 window.onload = () => {
     GameMain.init();
+    GameMain._initKeyboardShortcuts();
+};
+
+// ─── ATALHOS DE TECLADO ───────────────────────────────────────────────────────
+GameMain._initKeyboardShortcuts = function() {
+    document.addEventListener('keydown', function(e) {
+        // Ignorar se um campo de texto estiver em foco
+        const tag = document.activeElement ? document.activeElement.tagName : '';
+        if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;
+
+        const activeScreen = document.querySelector('.screen.active');
+        if (!activeScreen) return;
+        const screenId = activeScreen.id;
+        const key = e.key;
+
+        if (screenId === 'screen-menu') {
+            if (key === '1') { e.preventDefault(); GameMain.startNewCampaign(); }
+            else if (key === '2') { const btn = document.getElementById('btn-continue'); if (btn && !btn.disabled) { e.preventDefault(); GameMain.continueCampaign(); } }
+            else if (key === '3') { e.preventDefault(); GameMain.showHistory(); }
+            else if (key === '4') { e.preventDefault(); GameMain.openSettings(); }
+
+        } else if (screenId === 'screen-campaign') {
+            if (key === 'v' || key === 'V') { e.preventDefault(); GameMain.viewQuarter(); }
+            else if (key === 'o' || key === 'O') { e.preventDefault(); GameMain.viewOccurrences(); }
+            else if (key === 'w' || key === 'W') { e.preventDefault(); GameMain.openWorkshop(); }
+            else if (key === 'p' || key === 'P') { e.preventDefault(); GameMain.openPersonnel(); }
+            else if (key === 'n' || key === 'N') { e.preventDefault(); GameMain.nextDay(); }
+
+        } else if (screenId === 'screen-occurrence') {
+            // [N] próximo dia só se não houver chamado em aberto
+            if (key === 'n' || key === 'N') {
+                const occs = GameEngine.state.activeOccurrences || [];
+                if (occs.length === 0) { e.preventDefault(); GameMain.returnToCampaign(); GameMain.nextDay(); }
+            } else if (key === 'Escape') { e.preventDefault(); GameMain.returnToCampaign(); }
+
+        } else if (
+            screenId === 'screen-quarter' ||
+            screenId === 'screen-workshop' ||
+            screenId === 'screen-personnel'
+        ) {
+            if (key === 'Escape') { e.preventDefault(); GameMain.returnToCampaign(); }
+
+        } else if (screenId === 'screen-history' || screenId === 'screen-settings') {
+            if (key === 'Escape') { e.preventDefault(); GameMain.returnToMenu(); }
+        }
+    });
 };

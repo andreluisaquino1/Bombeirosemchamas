@@ -20,8 +20,8 @@
         <!-- HEADER DO JOGO -->
         <header id="game-header" class="hidden">
             <div class="header-info">DIA: <span id="ui-day">0</span></div>
-            <div class="header-info">REPUTAÇÃO: <span id="ui-rep">0</span></div>
-            <div class="header-info">MORAL: <span id="ui-moral">0</span></div>
+            <div class="header-info" title="REPUTAÇÃO: como a comunidade e o comando enxergam o quartel">REPUTAÇÃO: <span id="ui-rep">0</span></div>
+            <div class="header-info" title="MORAL: o estado emocional e a motivação da sua tropa">MORAL: <span id="ui-moral">0</span></div>
             <div class="header-info">FUNDO: R$ <span id="ui-money">0</span></div>
             <div class="header-info">NÍVEL: <span id="ui-level">0</span></div>
         </header>
@@ -77,7 +77,10 @@
             <section id="screen-campaign" class="screen">
                 <h2>PAINEL DE COMANDO</h2>
                 <p id="ui-campaign-name" style="text-align:center; color:#f0a500; font-size:1.1rem; margin-bottom:4px;"></p>
-                <p id="ui-rep-title" class="subtitle" style="margin-bottom: 8px; font-size: 1.2rem;"></p>
+                <p id="ui-rep-title" class="subtitle" style="margin-bottom: 4px; font-size: 1.2rem;"></p>
+                <p style="text-align:center; font-size:0.85rem; color:#555; margin-bottom:8px; flex-shrink:0;">
+                    💡 <span title="Como a comunidade e o comando enxergam o quartel">REPUTAÇÃO = percepção externa</span> &nbsp;|&nbsp; <span title="Estado emocional e motivação da tropa">MORAL = estado da tropa</span>
+                </p>
                 <div id="fleet-alerts" style="font-size:1.1rem; flex-shrink:0;"></div>
                 <div id="level3-banner" class="hidden" style="border: 2px solid #f0a500; padding: 10px; flex-shrink:0;">
                     <p style="color:#f0a500; font-size:1.2rem; margin-bottom:6px;">🎖️ REFORÇO NÍVEL 3 — Escolha o posto do novo militar:</p>
